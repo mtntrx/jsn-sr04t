@@ -6,7 +6,8 @@ void jsnSr04t::setup( int tp, int ep ) {
   pinMode(trigger_pin,OUTPUT);
   pinMode(echo_pin,INPUT);
 }
-float jsnSr04t::getRangeMeters( ) {
+
+float jsnSr04t::__getRangeMeters( float* rejectRatioPtr ) {
 
     // general approach
     // 1) Try to take RANGE_SAMPLES number of samples
@@ -91,9 +92,23 @@ float jsnSr04t::getRangeMeters( ) {
         samplesRejected,
          ( (samplesOutOfRange +  samplesRejected + 0.0 ) / SR04T_RANGE_SAMPLES ) * 100.0 );
 
+    *rejectRatioPtr = ( 0.0 + SR04T_RANGE_SAMPLES - retainedDurations ) / SR04T_RANGE_SAMPLES;
+
     if ( retainedDurations < SR04T_RANGE_REQD_GOOD_SAMPLES ) { 
         return -1; 
     } else {
         return rangeInMeters;
     }
 }
+
+float jsnSr04t::getRangeMeters( float* rejectRatioPtr ) {
+	float range = __getRangeMeters( rejectRatioPtr );
+        return range;
+}
+
+float jsnSr04t::getRangeMeters( ) {
+        float *rejectRatioPtr;  // not used here
+	float range = __getRangeMeters( rejectRatioPtr );
+        return range;
+}
+

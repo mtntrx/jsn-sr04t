@@ -10,7 +10,9 @@ class jsnSr04t {
     public:
         void setup( int, int);
         float getRangeMeters();
+        float getRangeMeters( float* rejectRatio );
     private:
+        float __getRangeMeters( float* rejectRatio );
         int trigger_pin;
         int echo_pin;
 };
