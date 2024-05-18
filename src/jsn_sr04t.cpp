@@ -27,6 +27,7 @@ float jsnSr04t::__getRangeMeters( float* rejectRatioPtr ) {
 
     digitalWrite(trigger_pin, LOW);        // Return trigger pin back to LOW again.
 
+    float totalDuration = 0.0;
     int storedSampleIndex = 0;
     for ( int i=0; i < SR04T_RANGE_SAMPLES; i++ ) {
         delay(10);
@@ -40,10 +41,23 @@ float jsnSr04t::__getRangeMeters( float* rejectRatioPtr ) {
         //interrupts();
         float duration = pulseIn(echo_pin,HIGH);  // Measure time in uSec for echo to come back.
 
+        totalDuration += duration;
+    	Serial.printf("total duration: %f\n",totalDuration); 
+        if ( i >= SR04T_BAIL_AFTER_ZEROS  && totalDuration < 0.0001 ) {
+    	    Serial.printf("I need to BAIL\n"); 
+            break;
+        }
+
         // store off all masurements that are within hardware range
         // note which bucket it is in
         // make counts of those buckets (biggest bucket will set the center of accepted range)
-        if ( duration < SR04T_RANGE_MAX_DURATION && duration > SR04T_RANGE_MIN_DURATION ) {
+        if ( duration < SR04T_RANGE_MIN_DURATION ) { 
+    	    Serial.printf("- %f\n",duration); 
+            samplesOutOfRange++;
+	} else if ( duration > SR04T_RANGE_MAX_DURATION ) { 
+    	    Serial.printf("+ %f\n",duration); 
+            samplesOutOfRange++;
+        } else {
             durations[storedSampleIndex] = duration;                        //real duration
             durationsBucketized[storedSampleIndex] = (int)(duration/10);    //put into a bucket, store the bucket value
             bucketTimesSeen[storedSampleIndex] = 0;                         //initialize the counts
@@ -58,10 +72,10 @@ float jsnSr04t::__getRangeMeters( float* rejectRatioPtr ) {
                 }
             }
             storedSampleIndex++;
-        } else {
-            samplesOutOfRange++;
+    	    Serial.printf(". %f\n",duration); 
         }
     }
+    Serial.printf("\n");
     storedDurations = storedSampleIndex;
     // should exit this with 1) a list of durations, value when bucketized, time that bucket has been seen
     //                       2) the value of the most seen bucket
@@ -71,15 +85,15 @@ float jsnSr04t::__getRangeMeters( float* rejectRatioPtr ) {
     float retainedDurations = 0;
     float retainedDurationsSum = 0;
     for ( int i=0; i < storedDurations; i++ ) {
-         //Serial.printf("  S:%d Sd:%d i:%d d:%.2f d:%d bs:%d ", SR04T_RANGE_SAMPLES, storedDurations, i, durations[i], 
-          ////                                                      durationsBucketized[i], bucketTimesSeen[i] );
+         Serial.printf("  S:%d Sd:%d i:%d d:%.2f d:%d bs:%d ", SR04T_RANGE_SAMPLES, storedDurations, i, durations[i], 
+                                                                durationsBucketized[i], bucketTimesSeen[i] );
         if ( abs( durationsBucketized[i] - bucketMostSeenValue ) <  ( bucketMostSeenValue * 0.05 ) ) { 
-            //Serial.println("RETAINED");
+            Serial.println("RETAINED");
             retainedDurationsSum += durations[i];
             retainedDurations++;
         } else {
             samplesRejected++;
-            //Serial.println("REJECTED");
+            Serial.println("REJECTED");
         }
     }
     
@@ -111,4 +125,3 @@ float jsnSr04t::getRangeMeters( ) {
 	float range = __getRangeMeters( rejectRatioPtr );
         return range;
 }
-
